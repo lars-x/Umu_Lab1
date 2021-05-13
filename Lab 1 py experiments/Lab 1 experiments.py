@@ -9,7 +9,6 @@ url = 'https://s3-us-west-1.amazonaws.com/udacity-selfdrivingcar/traffic-signs-d
 urllib.request.urlretrieve(url, './traffic-signs-data.zip')
 
 # Unzip File
-
 import zipfile
 import os
 
