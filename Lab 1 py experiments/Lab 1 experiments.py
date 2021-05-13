@@ -1,10 +1,10 @@
-import random
-import matplotlib.pyplot as plt
 import numpy as np
-import pickle
+import matplotlib.pyplot as plt
+
+import os
 import urllib.request
 import zipfile
-import os
+import pickle
 
 data_dir = './data/'
 training_file = data_dir + 'train.p'
@@ -12,7 +12,9 @@ validation_file = data_dir + 'valid.p'
 testing_file = data_dir + 'test.p'
 zip_file = data_dir + 'traffic-signs-data.zip'
 
-if not (os.path.exists(training_file) and os.path.exists(validation_file) and os.path.exists(testing_file)):
+if not (os.path.exists(training_file) and
+        os.path.exists(validation_file) and
+        os.path.exists(testing_file)):
     if not os.path.isdir(data_dir):
         os.makedirs(data_dir)
 
@@ -30,7 +32,6 @@ else:
     print('No data file downloading needed')
 
 print('Load pickled data')
-
 with open(training_file, mode='rb') as f:
     train = pickle.load(f)
 with open(validation_file, mode='rb') as f:
@@ -42,98 +43,60 @@ X_train, y_train = train['features'], train['labels']
 X_valid, y_valid = valid['features'], valid['labels']
 X_test,  y_test = test['features'], test['labels']
 
+# 1.2 Dataset Summary & Exploration
+
 print("Number of training examples   =", X_train.shape[0])
 print("Number of validation examples =", X_valid.shape[0])
 print("Number of testing examples    =", X_test.shape[0])
 print("Total examples                =", X_train.shape[0] + X_valid.shape[0] + X_test.shape[0])
 # What's the shape of an traffic sign image?
-print("Image data shape =", X_train.shape[1:])
+print("Image data shape  =", X_train.shape[1:])
 # How many unique classes/labels there are in the dataset.
 print("Number of classes =", len(np.unique(y_train)))
 
-i = 1
-image = X_train[i]
-title = f'Image {i}'
+# Visualize Image functions
 
 
-plt.imshow(image)
-plt.axis('off')
-plt.title(title)
-plt.show()
-
-
-def show_images(images, cols=1, titles=None):
-    """Display a list of images in a single figure with matplotlib.
-
-    Parameters
-    ---------
-    images: List of np.arrays compatible with plt.imshow.
-
-    cols (Default = 1): Number of columns in figure (number of rows is 
-                        set to np.ceil(n_images/float(cols))).
-
-    titles: List of titles corresponding to each image. Must have
-            the same length as titles.
-    """
-    assert((titles is None) or (len(images) == len(titles)))
-
-    n_images = len(images)
-
-    if titles is None:
-        titles = ['Image (%d)' % i for i in range(1, n_images + 1)]
-
-    fig = plt.figure(figsize=(2, 2))
-
-    for n, (image, title) in enumerate(zip(images, titles)):
-        a = fig.add_subplot(cols, np.ceil(n_images/float(cols)), n + 1)
-        a.grid(False)
-        a.axis('off')
-        if image.ndim == 2:
-            plt.gray()
-        plt.imshow(image, cmap='gray')
-        a.set_title(title)
-
-    fig.set_size_inches(np.array(fig.get_size_inches()) * n_images)
+def show_image(image, title):
+    plt.imshow(image)
+    plt.axis('off')
+    plt.title(title)
     plt.show()
 
 
-def select_random_images_by_classes(features, labels, n_features):
+def show_images(X, y, indexes, cols):
+    n = len(indexes)
+    rows = int(np.ceil(n / cols))
+    fig, axs = plt.subplots(rows, cols, squeeze=False)
+    i = 0
+    for r in range(rows):
+        for c in range(cols):
+            axs[r, c].axis('off')
+            if i >= n:
+                continue
+            index = indexes[i]
+            axs[r, c].imshow(X[index])
+            axs[r, c].set_title(f'Class = {y[index]}')
+            i = i + 1
 
+    fig.tight_layout()
+    fig.set_figheight(rows*4)
+    fig.set_figwidth(8)
+    plt.show()
+
+
+def get_n_random_indices_for_class(y, n_random_indices, classe):
     indexes = []
-    _classes = np.unique(labels)
+    for index, y in enumerate(y_train):
+        if y == classe:
+            indexes.append(index)
 
-    while len(indexes) < len(_classes):
-
-        index = random.randint(0, n_features-1)
-        _class = labels[index]
-
-        for i in range(0, len(_classes)):
-
-            if _class == _classes[i]:
-                _classes[i] = -1
-                indexes.append(index)
-                break
-
-    images = []
-    titles = []
-
-    for i in range(0, len(indexes)):
-        images.append(features[indexes[i]])
-        titles.append("class " + str(labels[indexes[i]]))
-
-    show_images(images, titles=titles)
+    indexes_total = len(indexes)
+    indexes_random = np.random.choice(indexes, n_random_indices, replace=False)
+    return indexes_random, indexes_total
 
 
-# Data exploration visualization code goes here.
-# Feel free to use as many code cells as needed.
-# Visualizations will be shown in the notebook.
-%matplotlib inline
-
-select_random_images_by_classes(X_train, y_train, n_train)
-
-
-def plot_distribution_chart(x, y, xlabel, ylabel, width, color):
-
+def plot_image_distribution(x, y, xlabel, ylabel, width, color):
     plt.figure(figsize=(15, 7))
     plt.ylabel(ylabel, fontsize=18)
     plt.xlabel(xlabel, fontsize=16)
@@ -141,29 +104,21 @@ def plot_distribution_chart(x, y, xlabel, ylabel, width, color):
     plt.show()
 
 
-_classes, counts = np.unique(y_train, return_counts=True)
+print('Show some traffic signs')
+i = 11137
+show_image(X_train[i], f'Image {i}')
+i = 29730
+show_image(X_train[i], f'Image {i}')
+print(f'Stop Class Id = {y_train[i]}')
 
-plot_distribution_chart(_classes, counts, 'Classes', '# Training Examples', 0.7, 'blue')
+print('Show some Stop signs')
+indexes = [29895, 29375, 29459, 29624, 29506, 29343]
+show_images(X_train, y_train, indexes, cols=2)
 
-# 3. Convert images to grayscale ---------------------------------
+print('Show some random Stop signs')
+indexes_random, indexes_total = get_n_random_indices_for_class(y_train, 10, 14)
+show_images(X_train, y_train, indexes_random, cols=10)
 
-X_train_gray = np.sum(X_train/3, axis=3, keepdims=True)
-
-X_test_gray = np.sum(X_test/3, axis=3, keepdims=True)
-
-X_valid_gray = np.sum(X_valid/3, axis=3, keepdims=True)
-
-# check grayscale images
-select_random_images_by_classes(X_train_gray.squeeze(), y_train, n_train)
-
-# 4. Mean Substraction
-
-X_train_gray -= np.mean(X_train_gray)
-
-X_test_gray -= np.mean(X_test_gray)
-
-X_train = X_train_gray
-
-X_test = X_test_gray
-
-select_random_images_by_classes(X_train_gray.squeeze(), y_train, n_train)
+print('Show traffic signs distibution')
+classes, counts = np.unique(y_train, return_counts=True)
+plot_image_distribution(classes, counts, 'Classes', '# Training Examples', 0.7, 'blue')
