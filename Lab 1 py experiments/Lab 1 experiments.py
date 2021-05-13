@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 import torch.nn as nn
 import torch.optim as optim
-from PIL import Image
+# from PIL import Image
 
 data_dir = './data/'
 training_file = data_dir + 'train.p'
@@ -60,7 +60,8 @@ print("Total examples                =", X_train.shape[0] + X_valid.shape[0] + X
 # What's the shape of an traffic sign image?
 print("Image data shape  =", X_train.shape[1:])
 # How many unique classes/labels there are in the dataset.
-print("Number of classes =", len(np.unique(y_train)))
+number_of_different_traffics_signs = len(np.unique(y_train))
+print("Number of classes =", number_of_different_traffics_signs)
 
 # Visualize Image functions
 
@@ -100,9 +101,9 @@ def show_images(X, y, indexes, cols):
     plt.show()
 
 
-def get_n_random_indices_for_class(y, n_random_indices, classe):
+def get_n_random_indices_for_class(ys, n_random_indices, classe):
     indexes = []
-    for index, y in enumerate(y_train):
+    for index, y in enumerate(ys):
         if y == classe:
             indexes.append(index)
 
@@ -131,7 +132,8 @@ indexes = [29895, 29375, 29459, 29624, 29506, 29343]
 show_images(X_train, y_train, indexes, cols=6)
 
 print('Show some random Stop signs')
-indexes_random, indexes_total = get_n_random_indices_for_class(y_train, 18, 14)
+stop_sign_class_id = 14
+indexes_random, indexes_total = get_n_random_indices_for_class(y_train, 18, stop_sign_class_id)
 show_images(X_train, y_train, indexes_random, cols=6)
 
 print('Show traffic signs distibution')
@@ -199,23 +201,24 @@ def tensor_image_to_image(tensor_image):
     return image
 
 
-def show_first_image_in_some_batch(loader):
+def show_first_image_in_some_batch(loader, batch_number=42):
     for batch_idx, batch in enumerate(loader):
         ## print("\nBatch = " + str(batch_idx))
-        if (batch_idx >= 42):
+        if (batch_idx >= batch_number):
             X = batch[0]
             y = batch[1]
             tensor_image = X[0]
             y_c = y[0]
             image = tensor_image_to_image(tensor_image)
+            print(image.shape)
             show_image(image, str(y_c.numpy()))
             break
 
 
-show_first_image_in_some_batch(train_loader)
-show_first_image_in_some_batch(train_loader)
-show_first_image_in_some_batch(valid_loader)
-show_first_image_in_some_batch(test_loader)
+show_first_image_in_some_batch(train_loader, batch_number=42)
+show_first_image_in_some_batch(train_loader, batch_number=42)
+show_first_image_in_some_batch(valid_loader, batch_number=42)
+show_first_image_in_some_batch(test_loader, batch_number=42)
 
 # 1.4 Build a CNN model
 
@@ -228,23 +231,32 @@ class Flatten(nn.Module):
         return x.view(x.shape[0], -1)
 
 
+class Flatten(nn.Module):
+    def forward(self, x):
+        return x.view(x.shape[0], -1)
+
+
+number_of_classes = number_of_different_traffics_signs
 model_cnn = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1), nn.ReLU(),
                           nn.Conv2d(32, 32, 3, padding=1, stride=2), nn.ReLU(),
                           nn.Conv2d(32, 64, 3, padding=1), nn.ReLU(),
                           nn.Conv2d(64, 64, 3, padding=1, stride=2), nn.ReLU(),
                           Flatten(),
-                          nn.Linear(7*7*64, 100), nn.ReLU(),
-                          nn.Linear(100, 10)).to(device)
-
+                          nn.Linear(4096, 100), nn.ReLU(),
+                          nn.Linear(100, number_of_classes)).to(device)
 
 # 1.5 Explore the model
+
+print(model_cnn.parameters)
+
 
 def exlorer(loader, model):
     for X, y in loader:
         X, y = X.to(device), y.to(device)
+        print(X.shape)
         yp = model(X)
         loss = nn.CrossEntropyLoss()(yp, y)
-        print*loss()
+        print(loss.item())
         break
 
 
@@ -254,16 +266,195 @@ exlorer(train_loader, model_cnn)
 
 
 def epoch(loader, model, opt=None):
-    total_loss, total_err = 0., 0.
+    total_error = 0.0
+    total_loss = 0.0
     for X, y in loader:
         X, y = X.to(device), y.to(device)
         yp = model(X)
         loss = nn.CrossEntropyLoss()(yp, y)
         if opt:
+            # In PyTorch, we need to set the gradients to zero before starting to do
+            # backpropragation because PyTorch accumulates the gradients on subsequent
+            # backward passes.
             opt.zero_grad()
             loss.backward()
             opt.step()
 
+        total_error += (yp.max(dim=1)[1] != y).sum().item()
+        total_loss += loss.item() * X.shape[0]
+
+    n = len(loader.dataset)
+    epoc_error = total_error / n
+    epoc_loss = total_loss / n
+
+    return epoc_error, epoc_loss
+
+
+ts = []
+train_errors = []
+train_losses = []
+valid_errors = []
+valid_losses = []
+
+max_epochs = 2
+opt = optim.SGD(model_cnn.parameters(), lr=0.1)
+for t in range(max_epochs):
+    train_error, train_loss = epoch(train_loader, model_cnn, opt)
+    valid_error, valid_loss = epoch(valid_loader, model_cnn)
+    if t == 4:
+        for param_group in opt.param_groups:
+            param_group["lr"] = 0.01
+
+    print(f'{t+1}\t{train_error:.6f}\t{train_loss:.6f}\t{valid_error:.6f}\t{valid_loss:.6f}')
+    ts.append(t+1)
+    train_errors.append(train_error)
+    train_losses.append(train_loss)
+    valid_errors.append(valid_error)
+    valid_losses.append(valid_loss)
+
+print(f'Final Train accuracy      = {100*(1-train_error):.2f}%')
+print(f'Final Validation accuracy = {100*(1-valid_error):.2f}%')
+
+# 1.7 Check overfitting
+
+plt.plot(ts, train_errors, '-b')
+plt.plot(ts, valid_errors, '-r')
+plt.grid()
+plt.show()
+
+# 1.8 Calculate the accuracy on the testset
+
+
+def accuracy(loader, model):
+    total_accuracy = 0.0
+    for X, y in loader:
+        X, y = X.to(device), y.to(device)
+        yp = model(X)
+        total_accuracy += (yp.max(dim=1)[1] == y).sum().item()
+
+    n = len(loader.dataset)
+    epoc__accuracy = total_accuracy / n
+    return epoc__accuracy
+
+
+print(f'Train accuracy       = {accuracy(train_loader, model_cnn)*100:.2f}%')
+print(f'Valididatio accuracy = {accuracy(valid_loader, model_cnn)*100:.2f}%')
+print(f'Test accuracy        = {accuracy(test_loader,  model_cnn)*100:.2f}%')
+
+# 2 Attack!
+
+# See table below
+stop_sign_class_id = 14
+speed_limit_50_class_id = 2
+
+
+def get_indices_for_class(ys, classe):
+    indexes = []
+    for index, y in enumerate(ys):
+        if y == classe:
+            indexes.append(index)
+
+    return indexes
+
+
+indexes_stop_sign = get_indices_for_class(y_test, stop_sign_class_id)
+X_stop_sign = X_test[indexes_stop_sign]
+n = len(indexes_stop_sign)
+y_stop_sign = np.ones(n)*stop_sign_class_id
+
+stop_sign_dataset = ImageDataset(X_stop_sign, y_stop_sign, transform=transform)
+stop_sign_loader = DataLoader(stop_sign_dataset, batch_size=stop_sign_dataset.__len__(), shuffle=False)
+
+indexes_speed_limit_50 = get_indices_for_class(y_test, speed_limit_50_class_id)
+X_speed_limit_50 = X_test[indexes_speed_limit_50]
+n = len(indexes_speed_limit_50)
+y_speed_limit_50 = np.ones(n)*speed_limit_50_class_id
+
+stop_sign_dataset = ImageDataset(X_stop_sign, y_stop_sign, transform=transform)
+stop_sign_loader = DataLoader(stop_sign_dataset, batch_size=stop_sign_dataset.__len__(), shuffle=False)
+
+speed_limit_50_dataset = ImageDataset(X_speed_limit_50, y_speed_limit_50, transform=transform)
+speed_limit_50_loader = DataLoader(speed_limit_50_dataset, batch_size=speed_limit_50_dataset.__len__(), shuffle=False)
+
+print(X_stop_sign.shape)
+print(X_speed_limit_50.shape)
+
+# 2.1 Untargeted attack using Fast Gradient Sign Method (FGSM)
+
+
+def fgsm(model, X, y, epsilon):
+    """ Construct FGSM adversarial examples on the examples X"""
+    delta = torch.zeros_like(X, requires_grad=True)
+    loss = nn.CrossEntropyLoss()(model(X + delta), y)
+    loss.backward()
+    return epsilon * delta.grad.detach().sign()
+
+
+def plot_images(X, y, yp, M, N):
+    f, ax = plt.subplots(M, N, sharex=True, sharey=True, figsize=(N, M*1.3))
+    for i in range(M):
+        for j in range(N):
+            ax[i][j].imshow(1-X[i*N+j][0].cpu().numpy(), cmap="gray")
+            title = ax[i][j].set_title("Pred: {}".format(yp[i*N+j].max(dim=0)[1]))
+            plt.setp(title, color=('g' if yp[i*N+j].max(dim=0)[1] == y[i*N+j] else 'r'))
+            ax[i][j].set_axis_off()
+    plt.tight_layout()
+
+
+# TODO: Interesting hack!
+for X, y in stop_sign_loader:
+    X, y = X.to(device), y.to(device)
+    break
+
+print(X.shape)
+print(y.shape)
+
+# 2.1.1 Table of ClassId & SignName
+
+# Illustrate original predictions
+yp = model_cnn(X)
+plot_images(X, y, yp, 6, 6)
+
+# Illustrate attacked images
+delta = fgsm(model_cnn, X, y, 0.01)
+yp = model_cnn(X + delta)
+plot_images(X+delta, y, yp, 6, 6)
+
+
+def epoch_adversarial(model, loader, attack, *args):
+    total_loss, total_err = 0., 0.
+    for X, y in loader:
+        X, y = X.to(device), y.to(device)
+        delta = attack(model, X, y, *args)
+        yp = model(X+delta)
+        loss = nn.CrossEntropyLoss()(yp, y)
+
         total_err += (yp.max(dim=1)[1] != y).sum().item()
         total_loss += loss.item() * X.shape[0]
     return total_err / len(loader.dataset), total_loss / len(loader.dataset)
+
+
+print("        CNN:", epoch_adversarial(model_cnn, test_loader, fgsm, 0.01)[0])
+
+# 2.2 Untargeted attack using Projected Gradient Descent
+
+# The (normalized) steepest descent
+
+
+def pgd_linf(model, X, y, epsilon, alpha, num_iter):
+    """ Construct FGSM adversarial examples on the examples X"""
+    delta = torch.zeros_like(X, requires_grad=True)
+    for t in range(num_iter):
+        loss = nn.CrossEntropyLoss()(model(X + delta), y)
+        loss.backward()
+        delta.data = (delta + alpha*delta.grad.detach().sign()).clamp(-epsilon, epsilon)
+        delta.grad.zero_()
+    return delta.detach()
+
+
+# Illustrate attacked images
+delta = pgd_linf(model_cnn, X, y, epsilon=0.01, alpha=1e-2, num_iter=40)
+yp = model_cnn(X + delta)
+plot_images(X+delta, y, yp, 6, 6)
+
+print("CNN:", epoch_adversarial(model_cnn, test_loader, pgd_linf, 0.01, 1e-2, 40)[0])
