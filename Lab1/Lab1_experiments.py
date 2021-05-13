@@ -289,10 +289,33 @@ def epoch(loader, model, opt=None):
     return epoc_error, epoc_loss
 
 
-get_ipython().run_cell_magic('time', '',
-                             'ts = []\ntrain_errors = []\ntrain_losses = []\nvalid_errors = []\nvalid_losses = []\n\nmax_epochs = 10\nopt = optim.SGD(model_cnn.parameters(), lr=0.1)\nfor t in range(max_epochs):\n    train_error, train_loss = epoch(train_loader, model_cnn, opt)\n    valid_error, valid_loss = epoch(valid_loader, model_cnn)\n    if t == 4:\n        for param_group in opt.param_groups:\n            param_group["lr"] = 0.01\n\n    print(f\'{t+1}\\t{train_error:.6f}\\t{train_loss:.6f}\\t{valid_error:.6f}\\t{valid_loss:.6f}\')\n    ts.append(t+1)\n    train_errors.append(train_error)\n    train_losses.append(train_loss)\n    valid_errors.append(valid_error)\n    valid_losses.append(valid_loss)\n\nprint(f\'Final Train accuracy      = {100*(1-train_error):.2f}%\')\nprint(f\'Final Validation accuracy = {100*(1-valid_error):.2f}%\')')
+ts = []
+train_errors = []
+train_losses = []
+valid_errors = []
+valid_losses = []
+
+max_epochs = 10
+opt = optim.SGD(model_cnn.parameters(), lr=0.1)
+for t in range(max_epochs):
+    train_error, train_loss = epoch(train_loader, model_cnn, opt)
+    valid_error, valid_loss = epoch(valid_loader, model_cnn)
+    if t == 4:
+        for param_group in opt.param_groups:
+            param_group["lr"] = 0.01
+
+    print(f'{t+1}\t{train_error:.6f}\t{train_loss:.6f}\t{valid_error:.6f}\t{valid_loss:.6f}')
+    ts.append(t+1)
+    train_errors.append(train_error)
+    train_losses.append(train_loss)
+    valid_errors.append(valid_error)
+    valid_losses.append(valid_loss)
+
+print(f'Final Train accuracy      = {100*(1-train_error):.2f}%')
+print(f'Final Validation accuracy = {100*(1-valid_error):.2f}%')
 
 # ## 1.7 Check overfitting
+
 
 plt.plot(ts, train_errors, '-b')
 plt.plot(ts, valid_errors, '-r')
@@ -471,10 +494,12 @@ show_image(image, 'Original: ' + str(y[i].numpy()))
 image = tensor_image_to_image(X[i] + delta[i])
 show_image(image, 'Attacked: ' + str(yp[i].max(dim=0)[1].numpy()))
 
+epoch_error = epoch_adversarial(
+    model_cnn,
+    test_loader,
+    pgd_linf_targ2, 0.03, 1e-2, 40, speed_limit_50_class_id)[0]
 
-get_ipython().run_cell_magic(
-    'time', '', 'epoch_error = epoch_adversarial(\n    model_cnn, \n    test_loader, \n    pgd_linf_targ, 0.03, 1e-2, 40, speed_limit_50_class_id)[0]\n\nprint("Epoch error :", epoch_error)')
-
+print("Epoch error :", epoch_error)
 
 print(f'Accuracy = {100*(1-epoch_error):.2f}%')
 
@@ -506,6 +531,12 @@ show_image(image, 'Original: ' + str(y[i].numpy()))
 image = tensor_image_to_image(X[i] + delta[i])
 show_image(image, 'Attacked: ' + str(yp[i].max(dim=0)[1].numpy()))
 
+epoch_error = epoch_adversarial(
+    model_cnn,
+    test_loader,
+    pgd_linf_targ2, 0.03, 1e-2, 40, speed_limit_50_class_id)[0]
+
+print("Epoch error :", epoch_error)
 
 print(f'Accuracy = {100*(1-epoch_error):.2f}%')
 
