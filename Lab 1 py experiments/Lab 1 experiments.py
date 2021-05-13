@@ -61,6 +61,7 @@ plt.axis('off')
 plt.title(title)
 plt.show()
 
+
 def show_images(images, cols=1, titles=None):
     """Display a list of images in a single figure with matplotlib.
 
