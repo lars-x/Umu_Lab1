@@ -1,4 +1,3 @@
-# Last one before switch to Colab & Notebook
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -13,7 +12,7 @@ from torch.utils.data import DataLoader
 from torchvision.transforms import transforms
 import torch.nn as nn
 import torch.optim as optim
-# from PIL import Image
+from PIL import Image
 
 data_dir = './data/'
 training_file = data_dir + 'train.p'
@@ -40,6 +39,7 @@ if not (os.path.exists(training_file) and
 else:
     print('No data file downloading needed')
 
+
 print('Load pickled data')
 with open(training_file, mode='rb') as f:
     train = pickle.load(f)
@@ -52,7 +52,7 @@ X_train, y_train = train['features'], train['labels']
 X_valid, y_valid = valid['features'], valid['labels']
 X_test,  y_test = test['features'], test['labels']
 
-# 1.2 Dataset Summary & Exploration
+# ## 1.2 Dataset Summary & Exploration
 
 print("Number of training examples   =", X_train.shape[0])
 print("Number of validation examples =", X_valid.shape[0])
@@ -60,7 +60,6 @@ print("Number of testing examples    =", X_test.shape[0])
 print("Total examples                =", X_train.shape[0] + X_valid.shape[0] + X_test.shape[0])
 # What's the shape of an traffic sign image?
 print("Image data shape  =", X_train.shape[1:])
-# How many unique classes/labels there are in the dataset.
 number_of_different_traffics_signs = len(np.unique(y_train))
 print("Number of classes =", number_of_different_traffics_signs)
 
@@ -123,25 +122,28 @@ def plot_image_distribution(x, y, xlabel, ylabel, width, color):
 
 print('Show some traffic signs')
 i = 11137
-show_image(X_train[i], f'Image {i}')
+show_image(X_train[i], f'A scary monster {i}')
 i = 29730
 show_image(X_train[i], f'Image {i}')
 print(f'Stop Class Id = {y_train[i]}')
 
+
 print('Show some Stop signs')
 indexes = [29895, 29375, 29459, 29624, 29506, 29343]
 show_images(X_train, y_train, indexes, cols=6)
+
 
 print('Show some random Stop signs')
 stop_sign_class_id = 14
 indexes_random, indexes_total = get_n_random_indices_for_class(y_train, 18, stop_sign_class_id)
 show_images(X_train, y_train, indexes_random, cols=6)
 
+
 print('Show traffic signs distibution')
 classes, counts = np.unique(y_train, return_counts=True)
 plot_image_distribution(classes, counts, 'Classes', '# Training Examples', 0.7, 'blue')
 
-# 1.3 Create a Image Pytorch Dataset & DataLoader:s
+# ## 1.3 Create Image Pytorch Datasets & DataLoaders
 
 
 class ImageDataset(Dataset):
@@ -174,6 +176,7 @@ test_dataset = ImageDataset(X_test,  y_test, transform=transform)
 train_loader = DataLoader(train_dataset, batch_size=100, shuffle=True)
 valid_loader = DataLoader(valid_dataset, batch_size=100, shuffle=False)
 test_loader = DataLoader(test_dataset, batch_size=100, shuffle=False)
+
 
 print('Some ImageDataset & DataLoader tests...')
 
@@ -221,15 +224,10 @@ show_first_image_in_some_batch(train_loader, batch_number=42)
 show_first_image_in_some_batch(valid_loader, batch_number=42)
 show_first_image_in_some_batch(test_loader, batch_number=42)
 
-# 1.4 Build a CNN model
+# ## 1.4 Build a CNN model
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
-
-
-class Flatten(nn.Module):
-    def forward(self, x):
-        return x.view(x.shape[0], -1)
 
 
 class Flatten(nn.Module):
@@ -246,7 +244,7 @@ model_cnn = nn.Sequential(nn.Conv2d(1, 32, 3, padding=1), nn.ReLU(),
                           nn.Linear(4096, 100), nn.ReLU(),
                           nn.Linear(100, number_of_classes)).to(device)
 
-# 1.5 Explore the model
+# ## 1.5 Explore the model
 
 print(model_cnn.parameters)
 
@@ -263,7 +261,7 @@ def exlorer(loader, model):
 
 exlorer(train_loader, model_cnn)
 
-# 1.6 Train the model
+# ## 1.6 Train the model
 
 
 def epoch(loader, model, opt=None):
@@ -291,39 +289,17 @@ def epoch(loader, model, opt=None):
     return epoc_error, epoc_loss
 
 
-ts = []
-train_errors = []
-train_losses = []
-valid_errors = []
-valid_losses = []
+get_ipython().run_cell_magic('time', '',
+                             'ts = []\ntrain_errors = []\ntrain_losses = []\nvalid_errors = []\nvalid_losses = []\n\nmax_epochs = 10\nopt = optim.SGD(model_cnn.parameters(), lr=0.1)\nfor t in range(max_epochs):\n    train_error, train_loss = epoch(train_loader, model_cnn, opt)\n    valid_error, valid_loss = epoch(valid_loader, model_cnn)\n    if t == 4:\n        for param_group in opt.param_groups:\n            param_group["lr"] = 0.01\n\n    print(f\'{t+1}\\t{train_error:.6f}\\t{train_loss:.6f}\\t{valid_error:.6f}\\t{valid_loss:.6f}\')\n    ts.append(t+1)\n    train_errors.append(train_error)\n    train_losses.append(train_loss)\n    valid_errors.append(valid_error)\n    valid_losses.append(valid_loss)\n\nprint(f\'Final Train accuracy      = {100*(1-train_error):.2f}%\')\nprint(f\'Final Validation accuracy = {100*(1-valid_error):.2f}%\')')
 
-max_epochs = 2
-opt = optim.SGD(model_cnn.parameters(), lr=0.1)
-for t in range(max_epochs):
-    train_error, train_loss = epoch(train_loader, model_cnn, opt)
-    valid_error, valid_loss = epoch(valid_loader, model_cnn)
-    if t == 4:
-        for param_group in opt.param_groups:
-            param_group["lr"] = 0.01
-
-    print(f'{t+1}\t{train_error:.6f}\t{train_loss:.6f}\t{valid_error:.6f}\t{valid_loss:.6f}')
-    ts.append(t+1)
-    train_errors.append(train_error)
-    train_losses.append(train_loss)
-    valid_errors.append(valid_error)
-    valid_losses.append(valid_loss)
-
-print(f'Final Train accuracy      = {100*(1-train_error):.2f}%')
-print(f'Final Validation accuracy = {100*(1-valid_error):.2f}%')
-
-# 1.7 Check overfitting
+# ## 1.7 Check overfitting
 
 plt.plot(ts, train_errors, '-b')
 plt.plot(ts, valid_errors, '-r')
 plt.grid()
 plt.show()
 
-# 1.8 Calculate the accuracy on the testset
+# ## 1.8 Calculate the accuracy on the testset
 
 
 def accuracy(loader, model):
@@ -339,12 +315,15 @@ def accuracy(loader, model):
 
 
 print(f'Train accuracy       = {accuracy(train_loader, model_cnn)*100:.2f}%')
-print(f'Valididatio accuracy = {accuracy(valid_loader, model_cnn)*100:.2f}%')
+print(f'Validation accuracy  = {accuracy(valid_loader, model_cnn)*100:.2f}%')
 print(f'Test accuracy        = {accuracy(test_loader,  model_cnn)*100:.2f}%')
 
-# 2 Attack!
+# # 2 Attack!
+# ## 2.-1 Table of ClassId & SignName
 
-# See table below
+# ## 2.0 Init stuff
+
+# See table above
 stop_sign_class_id = 14
 speed_limit_50_class_id = 2
 
@@ -366,21 +345,12 @@ y_stop_sign = np.ones(n)*stop_sign_class_id
 stop_sign_dataset = ImageDataset(X_stop_sign, y_stop_sign, transform=transform)
 stop_sign_loader = DataLoader(stop_sign_dataset, batch_size=stop_sign_dataset.__len__(), shuffle=False)
 
-indexes_speed_limit_50 = get_indices_for_class(y_test, speed_limit_50_class_id)
-X_speed_limit_50 = X_test[indexes_speed_limit_50]
-n = len(indexes_speed_limit_50)
-y_speed_limit_50 = np.ones(n)*speed_limit_50_class_id
-
 stop_sign_dataset = ImageDataset(X_stop_sign, y_stop_sign, transform=transform)
 stop_sign_loader = DataLoader(stop_sign_dataset, batch_size=stop_sign_dataset.__len__(), shuffle=False)
 
-speed_limit_50_dataset = ImageDataset(X_speed_limit_50, y_speed_limit_50, transform=transform)
-speed_limit_50_loader = DataLoader(speed_limit_50_dataset, batch_size=speed_limit_50_dataset.__len__(), shuffle=False)
-
 print(X_stop_sign.shape)
-print(X_speed_limit_50.shape)
 
-# 2.1 Untargeted attack using Fast Gradient Sign Method (FGSM)
+# ## 2.1 Untargeted attack using Fast Gradient Sign Method (FGSM)
 
 
 def fgsm(model, X, y, epsilon):
@@ -410,11 +380,11 @@ for X, y in stop_sign_loader:
 print(X.shape)
 print(y.shape)
 
-# 2.1.1 Table of ClassId & SignName
 
 # Illustrate original predictions
 yp = model_cnn(X)
 plot_images(X, y, yp, 6, 6)
+
 
 # Illustrate attacked images
 delta = fgsm(model_cnn, X, y, 0.01)
@@ -435,9 +405,9 @@ def epoch_adversarial(model, loader, attack, *args):
     return total_err / len(loader.dataset), total_loss / len(loader.dataset)
 
 
-print("        CNN:", epoch_adversarial(model_cnn, test_loader, fgsm, 0.01)[0])
+print("Epoch error :", epoch_adversarial(model_cnn, stop_sign_loader, fgsm, 0.01)[0])
 
-# 2.2 Untargeted attack using Projected Gradient Descent
+# ## 2.2 Untargeted attack using Projected Gradient Descent
 
 # The (normalized) steepest descent
 
@@ -458,4 +428,85 @@ delta = pgd_linf(model_cnn, X, y, epsilon=0.01, alpha=1e-2, num_iter=40)
 yp = model_cnn(X + delta)
 plot_images(X+delta, y, yp, 6, 6)
 
-print("CNN:", epoch_adversarial(model_cnn, test_loader, pgd_linf, 0.01, 1e-2, 40)[0])
+
+print("Epoch error :", epoch_adversarial(model_cnn, stop_sign_loader, pgd_linf, 0.01, 1e-2, 40)[0])
+
+# ## 2.3 Targeted attack using Projected Gradient Descent ver 1
+
+# Switch to the Speed Limit 50 km/h signs
+for X, y in test_loader:
+    X, y = X.to(device), y.to(device)
+    break
+
+print(X.shape)
+print(y.shape)
+
+
+def pgd_linf_targ(model, X, y, epsilon, alpha, num_iter, y_targ):
+    """ Construct targeted adversarial examples on the examples X"""
+    delta = torch.zeros_like(X, requires_grad=True)
+    for t in range(num_iter):
+        yp = model(X + delta)
+        loss = (yp[:, y_targ] - yp.gather(1, y[:, None])[:, 0]).sum()
+        loss.backward()
+        delta.data = (delta + alpha*delta.grad.detach().sign()).clamp(-epsilon, epsilon)
+        delta.grad.zero_()
+    return delta.detach()
+
+
+# Illustrate original predictions
+yp = model_cnn(X)
+plot_images(X, y, yp, 6, 6)
+
+
+delta = pgd_linf_targ(model_cnn, X, y, epsilon=0.03, alpha=1e-2, num_iter=40, y_targ=speed_limit_50_class_id)
+yp = model_cnn(X + delta)
+plot_images(X+delta, y, yp, 6, 6)
+
+
+# An example of a successful attack
+i = 12-1
+image = tensor_image_to_image(X[i])
+show_image(image, 'Original: ' + str(y[i].numpy()))
+image = tensor_image_to_image(X[i] + delta[i])
+show_image(image, 'Attacked: ' + str(yp[i].max(dim=0)[1].numpy()))
+
+
+get_ipython().run_cell_magic(
+    'time', '', 'epoch_error = epoch_adversarial(\n    model_cnn, \n    test_loader, \n    pgd_linf_targ, 0.03, 1e-2, 40, speed_limit_50_class_id)[0]\n\nprint("Epoch error :", epoch_error)')
+
+
+print(f'Accuracy = {100*(1-epoch_error):.2f}%')
+
+# ## 2.4 Targeted attack using Projected Gradient Descent ver 2
+
+
+def pgd_linf_targ2(model, X, y, epsilon, alpha, num_iter, y_targ):
+    """ Construct targeted adversarial examples on the examples X"""
+    delta = torch.zeros_like(X, requires_grad=True)
+    for t in range(num_iter):
+        yp = model(X + delta)
+        loss = 2*yp[:, y_targ].sum() - yp.sum()
+        loss.backward()
+        delta.data = (delta + alpha*delta.grad.detach().sign()).clamp(-epsilon, epsilon)
+        delta.grad.zero_()
+    return delta.detach()
+
+
+delta = pgd_linf_targ2(model_cnn, X, y, epsilon=0.03, alpha=1e-2, num_iter=40, y_targ=speed_limit_50_class_id)
+yp = model_cnn(X + delta)
+plot_images(X+delta, y, yp, 6, 6)
+
+
+# Number 11 is not a success anymore, but...
+# An example of a successful attack
+i = 5*6+1-1
+image = tensor_image_to_image(X[i])
+show_image(image, 'Original: ' + str(y[i].numpy()))
+image = tensor_image_to_image(X[i] + delta[i])
+show_image(image, 'Attacked: ' + str(yp[i].max(dim=0)[1].numpy()))
+
+
+print(f'Accuracy = {100*(1-epoch_error):.2f}%')
+
+# The End
