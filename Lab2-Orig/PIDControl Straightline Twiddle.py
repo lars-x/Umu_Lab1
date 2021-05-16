@@ -14,6 +14,7 @@
 # ------------
 
 import random
+import matplotlib.pyplot as plt
 import numpy as np
 
 # ------------------------------------------------
@@ -182,3 +183,5 @@ n = len(x_trajectory)
 fig, (ax1) = plt.subplots(1, 1, figsize=(8, 8))
 ax1.plot(x_trajectory, y_trajectory, 'g', label='Twiddle PID controller')
 ax1.plot(x_trajectory, np.zeros(n), 'r', label='reference')
+plt.grid(True)
+plt.show()

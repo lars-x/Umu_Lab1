@@ -175,21 +175,22 @@ def run(params, radius, printflag = False):
     return err / float(N)  
 
 def twiddle(radius,tol=0.2):  
+    printflag = False
     p = [0.9, 0.0, 0.0]
     dp = [1.0, 1.0, 1.0]
-    best_err = run(p, radius)
+    best_err = run(p, radius, printflag)
     it = 0
     while sum(dp) > tol:
         # print("Iteration {}, best error = {}".format(it, best_err))
         for i in range(len(p)):
             p[i] += dp[i]
-            err = run(p, radius)
+            err = run(p, radius, printflag)
             if err < best_err:
                 best_err = err
                 dp[i] *= 1.1
             else:
                 p[i] -= 2 * dp[i]
-                err = run(p, radius)
+                err = run(p, radius, printflag)
                 if err < best_err:
                     best_err = err
                     dp[i] *= 1.1
@@ -199,8 +200,8 @@ def twiddle(radius,tol=0.2):
         it += 1
     return p, best_err
 
-
+printflag = True
 radius = 25.0
 #params = [10.0, 15.0, 0]
 params,err = twiddle(radius)
-err = run(params, radius,True)
+err = run(params, radius, printflag)
