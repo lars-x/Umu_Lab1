@@ -121,13 +121,20 @@ class robot:
     def __repr__(self):
         return '[x=%.5f y=%.5f orient=%.5f]'  % (self.x, self.y, self.orientation)
    
-    def cte(self, radius):           
-        center1 = [radius, radius] #y,x
+    def cte(self, radius):#Refer to L6 Control, p 28. 
+        center1 = [radius, radius] 
         center2 = [radius, 3*radius]
-        if self.x < radius:
-            cte = ((self.x - center1[1])**2 + (self.y - center1[0])**2)**0.5 - radius
+        if self.x > radius and self.x < 3*radius: #If x lies in the center straight line segment
+            if self.y > radius: #If y is above the center line, then compute vertical distance from (x,y) to the top edge of the track
+                cte = self.y - (2*radius)
+            else: #If y is below the center line, then compute vertical distance from the bottom edge of the track to (x,y)
+                cte = -1.0 * self.y
         else:
-            cte = ((self.x - center2[1])**2 + (self.y - center2[0])**2)**0.5 - radius                
+            if self.x < 2*radius: #If x lies in the left semi-circle segment (self.x <= radius), then compute Euclidian distance from (x,y) to the perimeter of the left semi-circle 
+                cte = ((self.x - center1[1])**2 + (self.y - center1[0])**2)**0.5 - radius
+            else: #If x lies in the right semi-circle part (self.x >= 3*radius), then compute Euclidian distance from (x,y) to the perimeter of the right semi-circle
+                cte = ((self.x - center2[1])**2 + (self.y - center2[0])**2)**0.5 - radius                
+        
        
         return cte
 # ------------------------------------------------------------------------
@@ -161,30 +168,28 @@ def run(params, radius, printflag = False):
             print (myrobot)
     if printflag:
       plt.plot(x_trajectory,y_trajectory, color="r", linestyle="--", marker="*", linewidth=1.0)
+      plt.show()
     print('**********************************************************************************')
     print('\nFinal parameters: ', params)
     print('\nError: ', err)
     return err / float(N)  
 
 def twiddle(radius,tol=0.2):  
-    printflag = False
     p = [0.9, 0.0, 0.0]
-    # Lars
-    # dp = [1.0, 1.0, 1.0]
     dp = [1.0, 1.0, 1.0]
-    best_err = run(p, radius, printflag)
+    best_err = run(p, radius)
     it = 0
     while sum(dp) > tol:
         # print("Iteration {}, best error = {}".format(it, best_err))
         for i in range(len(p)):
             p[i] += dp[i]
-            err = run(p, radius, printflag)
+            err = run(p, radius)
             if err < best_err:
                 best_err = err
                 dp[i] *= 1.1
             else:
                 p[i] -= 2 * dp[i]
-                err = run(p, radius, printflag)
+                err = run(p, radius)
                 if err < best_err:
                     best_err = err
                     dp[i] *= 1.1
@@ -194,10 +199,8 @@ def twiddle(radius,tol=0.2):
         it += 1
     return p, best_err
 
-printflag = True
+
 radius = 25.0
 #params = [10.0, 15.0, 0]
 params,err = twiddle(radius)
-err = run(params, radius, printflag)
-
-plt.show()
+err = run(params, radius,True)
