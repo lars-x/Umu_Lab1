@@ -7,7 +7,7 @@
 # --------------
 
 
- 
+
 from math import *
 import random
 import matplotlib.pyplot as plt
@@ -123,7 +123,7 @@ class robot:
    
     def cte(self, radius):           
         center1 = [radius, radius] #y,x
-        center2 = [radius, 3*radius]
+        center2 = [radius, radius]
         if self.x < radius:
             cte = ((self.x - center1[1])**2 + (self.y - center1[0])**2)**0.5 - radius
         else:
@@ -168,10 +168,9 @@ def run(params, radius, printflag = False):
 
 def twiddle(radius,tol=0.2):  
     printflag = False
-    p = [0.9, 0.0, 0.0]
-    # Lars
-    # dp = [1.0, 1.0, 1.0]
-    dp = [1.0, 1.0, 1.0]
+    # P D I
+    p = [9.9, 0.0, 0.0]
+    dp = [1.0, 0.0, 0.0]
     best_err = run(p, radius, printflag)
     it = 0
     while sum(dp) > tol:
@@ -195,9 +194,14 @@ def twiddle(radius,tol=0.2):
     return p, best_err
 
 printflag = True
-radius = 25.0
+radius = 50.0
 #params = [10.0, 15.0, 0]
 params,err = twiddle(radius)
 err = run(params, radius, printflag)
 
+title = '1 P Control'
+plt.title(title)
+plt.grid(True)
+plt.axis('square')
+plt.savefig(title)
 plt.show()
