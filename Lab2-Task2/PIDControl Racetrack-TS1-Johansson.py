@@ -141,7 +141,7 @@ def run(params, radius, printflag = False):
     speed = 10.0 # motion distance is equal to speed (we assume time = 1)
     err = 0.0
     int_crosstrack_error = 0.0
-    N =1000
+    N = 1000
     crosstrack_error = myrobot.cte(radius)
     x_trajectory = []
     y_trajectory = []
@@ -195,7 +195,6 @@ def twiddle(radius,tol=0.2):
 
 printflag = True
 radius = 50.0
-# params = [0.057865282995428605, 0.12525374237962944, 0.0009847709021836015]
 params,err = twiddle(radius)
 err = run(params, radius, printflag)
 

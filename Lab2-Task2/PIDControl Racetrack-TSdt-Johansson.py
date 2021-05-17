@@ -139,7 +139,7 @@ def run(params, radius):
     dt = params[3]
     myrobot = robot()
     myrobot.set(0.0, radius, pi / 2.0)
-    speed = 10.0 # motion distance is equal to speed (we assume time = 1)
+    speed = 10.0
     err = 0.0
     int_crosstrack_error = 0.0
     N = 1000
@@ -172,11 +172,13 @@ def limit_p_i(i, pi, printflag = False):
             pi = p_min
     return pi
 
-def twiddle(radius, params, printflag = False, tol=0.2):
-    p_min = 0.0001
+def twiddle(radius, params, twiddle_dt, printflag = False, tol=0.2):
     # P D I dt
     p = params
-    dp = [1.0, 1.0, 1.0, 1.0]
+    n_params = len(p)
+    if not twiddle_dt: n_params = n_params - 1
+    dp = [1.0 for k in range(n_params)]
+    
     best_err, _, _ = run(p, radius)
     it = 0
     while sum(dp) > tol:
@@ -186,7 +188,7 @@ def twiddle(radius, params, printflag = False, tol=0.2):
             print('dp         : ', dp)
             print('Error      : ', best_err)
 
-        for i in range(len(p)):
+        for i in range(n_params):
             p_i = p[i]
             p[i] = p_i + dp[i]            
             err, _, _ = run(p, radius)
@@ -210,9 +212,18 @@ def twiddle(radius, params, printflag = False, tol=0.2):
 
 radius = 50.0
 # P D I dt
-params_guess = [0.7, 0.19, 0.7, 0.17]
-params = params_guess
-params, err = twiddle(radius, params_guess, printflag=False)
+# params_guess = [0.9, 0.0, 0.0, 1.0] # => Final parameters:  [0.814724445699, 1.0, 0.0, 1.0] Error:  43.96804735503897
+# params_guess = [0.9, 0.0, 0.0, 0.8] # => Final parameters:  [1.8576035379000002, 2.547086236136181, 0.05814973700304011, 0.8] Error:  10.670094569381561
+# params_guess = [0.9, 0.0, 0.0, 0.6] # => Final parameters:  [0.06429138897320935, 0.7963749277719623, 0.002541865828328993, 0.6] Error:  0.14811718599201817
+# params_guess = [0.9, 0.0, 0.0, 0.5] # => Final parameters:  [0.08590672746124747, 0.9497655169465743, 0.0036055070229635486, 0.5] Error:  0.07110604484476168
+params_guess = [0.9, 0.0, 0.0, 0.4] # => Final parameters:  [0.06569235094717615, 0.3476807028344309, 0.03814204568201396, 0.4] Error:  5.654554968624213e-29
+# params_guess = [0.9, 0.0, 0.0, 0.1] # => Final parameters:  [1.084717830688594, 1.3120467467824615, 0.37284202899999963, 0.1] Error:  4.700348817668877e-29
+params, err = twiddle(radius, params_guess, twiddle_dt=False, printflag=True)
+
+# params_guess = [0.7, 0.19, 0.7, 0.17]
+# params_guess = [0.7, 0.191, 0.7, 0.17]
+# params_guess = [0.07, 0.191, 0.7, 0.17]
+# params, err = twiddle(radius, params_guess, twiddle_dt=True, printflag=True)
 
 err, x_trajectory, y_trajectory = run(params, radius)
 
@@ -229,9 +240,9 @@ x = x_trajectory[start:end]
 y = y_trajectory[start:end]
 
 plt.plot(x, y, color="r", linestyle="--", marker="*", linewidth=1.0)
-title = '2-2 PID N=1000 params_guess=[0.7, 0.19, 0.7, 0.17]'
+title = '2-2 PID N=1000 dt=0.4'
 plt.title(title)
 plt.grid(True)
 plt.axis('square')
-plt.savefig(title + '.png')
+# plt.savefig(title + '.png')
 plt.show()
