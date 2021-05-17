@@ -136,6 +136,7 @@ class robot:
 
 
 def run(params, radius, printflag = False):
+    dt = 0.1
     myrobot = robot()
     myrobot.set(0.0, radius, pi / 2.0)
     speed = 10.0 # motion distance is equal to speed (we assume time = 1)
@@ -149,9 +150,10 @@ def run(params, radius, printflag = False):
         diff_crosstrack_error = - crosstrack_error
         crosstrack_error = myrobot.cte(radius)
         diff_crosstrack_error += crosstrack_error
-        int_crosstrack_error += crosstrack_error
+        diff_crosstrack_error = diff_crosstrack_error/dt
+        int_crosstrack_error += crosstrack_error*dt       
         steer = -params[0] * crosstrack_error - params[1] * diff_crosstrack_error - params[2] * int_crosstrack_error
-        myrobot = myrobot.move(steer, speed)
+        myrobot = myrobot.move(steer, speed*dt)
 
         if i >= N:
             err += crosstrack_error ** 2
@@ -195,13 +197,13 @@ def twiddle(radius,tol=0.2):
 
 printflag = True
 radius = 50.0
-# params = [0.057865282995428605, 0.12525374237962944, 0.0009847709021836015]
-params,err = twiddle(radius)
+params = [1.0, 1.0, 1.0]
+# params,err = twiddle(radius)
 err = run(params, radius, printflag)
 
-title = '2-1 PID dT=1 N=1000'
+title = '2-2 PID dT=0-1 N=1000 PID= 1 1 1'
 plt.title(title)
 plt.grid(True)
 plt.axis('square')
-plt.savefig(title)
+# plt.savefig(title)
 plt.show()
