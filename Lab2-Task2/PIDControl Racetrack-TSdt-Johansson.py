@@ -135,14 +135,14 @@ class robot:
 # run - does a single control run.
 
 
-def run(params, radius, printflag = False):
-    dt = 0.1
+def run(params, radius):
+    dt = params[3]
     myrobot = robot()
     myrobot.set(0.0, radius, pi / 2.0)
     speed = 10.0 # motion distance is equal to speed (we assume time = 1)
     err = 0.0
     int_crosstrack_error = 0.0
-    N =1000
+    N = 1000
     crosstrack_error = myrobot.cte(radius)
     x_trajectory = []
     y_trajectory = []
@@ -157,53 +157,81 @@ def run(params, radius, printflag = False):
 
         if i >= N:
             err += crosstrack_error ** 2
-            x_trajectory.append(myrobot.x)
-            y_trajectory.append(myrobot.y)
-        if printflag:
-            print (myrobot)
-    if printflag:
-      plt.plot(x_trajectory,y_trajectory, color="r", linestyle="--", marker="*", linewidth=1.0)
-    print('**********************************************************************************')
-    print('\nFinal parameters: ', params)
-    print('\nError: ', err)
-    return err / float(N)  
+        
+        x_trajectory.append(myrobot.x)
+        y_trajectory.append(myrobot.y)
+    
+    return err / float(N), x_trajectory, y_trajectory
 
-def twiddle(radius,tol=0.2):  
-    printflag = False
-    # P D I
-    p = [0.9, 0.0, 0.0]
-    dp = [1.0, 1.0, 1.0]
-    best_err = run(p, radius, printflag)
+def limit_p_i(i, pi, printflag = False):
+    p_min = 0.000001
+    if pi < p_min:
+        if printflag:
+            print('limit_p_i :', i, pi)
+        if i == 3:
+            pi = p_min
+    return pi
+
+def twiddle(radius, params, printflag = False, tol=0.2):
+    p_min = 0.0001
+    # P D I dt
+    p = params
+    dp = [1.0, 1.0, 1.0, 1.0]
+    best_err, _, _ = run(p, radius)
     it = 0
     while sum(dp) > tol:
-        # print("Iteration {}, best error = {}".format(it, best_err))
+        if printflag:
+            print('********************** Iteration:', it)
+            print('Parameters : ', p)
+            print('dp         : ', dp)
+            print('Error      : ', best_err)
+
         for i in range(len(p)):
-            p[i] += dp[i]
-            err = run(p, radius, printflag)
+            p_i = p[i]
+            p[i] = p_i + dp[i]            
+            err, _, _ = run(p, radius)
             if err < best_err:
                 best_err = err
                 dp[i] *= 1.1
             else:
-                p[i] -= 2 * dp[i]
-                err = run(p, radius, printflag)
+                p[i] = p_i - dp[i]
+                p[i] = limit_p_i(i, p[i])
+                err, _, _ = run(p, radius)
                 if err < best_err:
                     best_err = err
                     dp[i] *= 1.1
                 else:
-                    p[i] += dp[i]
+                    p[i] = p_i
                     dp[i] *= 0.9
+        
         it += 1
+
     return p, best_err
 
-printflag = True
 radius = 50.0
-params = [1.0, 1.0, 1.0]
-# params,err = twiddle(radius)
-err = run(params, radius, printflag)
+# P D I dt
+params_guess = [0.7, 0.19, 0.7, 0.17]
+params = params_guess
+params, err = twiddle(radius, params_guess, printflag=False)
 
-title = '2-2 PID dT=0-1 N=1000 PID= 1 1 1'
+err, x_trajectory, y_trajectory = run(params, radius)
+
+print('**********************************************************************************')
+print('Final parameters: ', params)
+print('Error: ', err)
+
+n = len(x_trajectory)
+start = n // 2
+end = n
+# start = 0
+# end = 20
+x = x_trajectory[start:end]
+y = y_trajectory[start:end]
+
+plt.plot(x, y, color="r", linestyle="--", marker="*", linewidth=1.0)
+title = '2-2 PID N=1000 params_guess=[0.7, 0.19, 0.7, 0.17]'
 plt.title(title)
 plt.grid(True)
 plt.axis('square')
-# plt.savefig(title)
+plt.savefig(title + '.png')
 plt.show()
